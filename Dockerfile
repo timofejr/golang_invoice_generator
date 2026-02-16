@@ -13,15 +13,11 @@ FROM alpine:3.21
 
 WORKDIR /app
 
-RUN addgroup -S app && adduser -S app -G app
-
 COPY --from=builder /app/invoice_generator ./invoice_generator
 COPY --from=builder /src/templates ./templates
 COPY --from=builder /src/static ./static
 
-RUN mkdir -p /app/uploads && chown -R app:app /app
-
-USER app
+RUN mkdir -p /app/uploads
 
 ENV GIN_MODE=release
 EXPOSE 8080

@@ -46,11 +46,19 @@ docker build -t invoice_generator:local .
 2. Запусти контейнер:
 
 ```bash
+mkdir -p uploads
 docker run --rm -p 8080:8080 -v $(pwd)/uploads:/app/uploads invoice_generator:local
 ```
 
 ```bash
+mkdir -p uploads
 docker run -d --name invoice_generator -p 8080:8080 -v $(pwd)/uploads:/app/uploads invoice_generator:local
+```
+
+Если хост использует SELinux (например Fedora/CentOS/RHEL), добавь метку `:Z`:
+
+```bash
+docker run --rm -p 8080:8080 -v $(pwd)/uploads:/app/uploads:Z invoice_generator:local
 ```
 
 ## Полезно знать
