@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Создание накладной Хлебный цех</title>
+        <link rel="stylesheet" href="static/bread/css/styles.css" />
+    </head>
+
+    <body>
+        <div class="page">
+            <header class="header">
+                <h1>Создание накладной Хлебный цех</h1>
+                <p>
+                    Загрузите файл и выберите параметры для формирования
+                    накладной.
+                </p>
+            </header>
+
+            <main class="content">
+                <!-- Левая колонка: форма -->
+                <section class="card" aria-label="Форма создания накладной">
+                    <h2 class="section-title">Параметры</h2>
+
+                    <form id="form">
+                        <div class="field">
+                            <label for="file">Загрузка файла</label>
+                            <input id="file" name="file" type="file" />
+                            <div class="field-warning"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="counterparty">Контрагент</label>
+                            <select
+                                id="counterparty"
+                                disabled
+                                name="counterparty"
+                            >
+                                <option value="" selected disabled>
+                                    Выберите контрагента
+                                </option>
+                            </select>
+                            <div class="field-warning"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="time">Время</label>
+                            <select id="time" disabled name="time">
+                                <option value="" selected disabled>
+                                    Выберите время
+                                </option>
+                            </select>
+                            <div class="field-warning"></div>
+                        </div>
+
+                        <div class="field">
+                            <label for="sheet">Листы</label>
+                            <div
+                                class="checkbox-list is-disabled"
+                                id="sheet"
+                                aria-label="Выберите листы"
+                            >
+                                <p class="checkbox-list-placeholder">
+                                    Выберите листы
+                                </p>
+                            </div>
+                            <div class="field-warning"></div>
+                        </div>
+
+                        <div class="actions">
+                            <button
+                                class="btn-primary"
+                                id="createInvoice"
+                                disabled
+                                type="submit"
+                            >
+                                Создать накладную
+                            </button>
+                            <button
+                                class="btn-secondary"
+                                id="clearForm"
+                                type="reset"
+                            >
+                                Отчистить
+                            </button>
+                        </div>
+
+                        <!-- Предупреждения (красным). Для показа добавьте class="warnings is-visible" -->
+                        <div class="warnings" role="alert" aria-live="polite">
+                            <ul>
+                                <li>
+                                    Пример предупреждения: не выбран контрагент.
+                                </li>
+                                <li>
+                                    Пример предупреждения: не загружен файл.
+                                </li>
+                            </ul>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Правая колонка: таблица -->
+                <section class="card" aria-label="Таблица позиций">
+                    <div class="section-header">
+                        <h2 class="section-title">Позиции накладной</h2>
+                        <span class="invoice-count" id="invoiceCount"
+                            >Позиций: 0</span
+                        >
+                    </div>
+                    <p class="invoice-title" id="invoiceTitle"></p>
+
+                    <div class="table-wrap">
+                        <table id="invoiceTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60%">Наименование</th>
+                                    <th style="width: 25%">Артикул</th>
+                                    <th style="width: 15%">Кол-во</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Пустая таблица (демо-строки для визуального каркаса) -->
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                    <td class="table-placeholder">&nbsp;</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-actions">
+                        <button
+                            class="btn-primary"
+                            id="copyTable"
+                            type="button"
+                            disabled
+                        >
+                            Скопировать
+                        </button>
+                    </div>
+                </section>
+            </main>
+        </div>
+        <div
+            class="loading-overlay"
+            id="createInvoiceLoader"
+            aria-hidden="true"
+            role="status"
+        >
+            <div class="loading-box">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Создаем накладную...</div>
+            </div>
+        </div>
+
+        <script src="static/bread/js/script.js"></script>
+    </body>
+</html>
