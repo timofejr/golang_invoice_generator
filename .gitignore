@@ -1,0 +1,32 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+.zed/
+
+# Logs / temp
+*.log
+tmp/
+temp/
+
+# Go build / test artifacts
+bin/
+dist/
+cover.out
+coverage.out
+*.test
+*.out
+__debug_bin*
+.gocache/
+
+# Environment / local config
+.env
+.env.*
+
+# Uploads: keep folder, ignore internal files
+uploads/*
+!uploads/.gitkeep

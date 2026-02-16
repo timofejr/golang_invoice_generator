@@ -61,6 +61,42 @@ docker run -d --name invoice_generator -p 8080:8080 -v $(pwd)/uploads:/app/uploa
 docker run --rm -p 8080:8080 -v $(pwd)/uploads:/app/uploads:Z invoice_generator:local
 ```
 
+## Домен без порта и HTTPS
+
+Для доступа как `https://your-domain.com` без `:8080` используй `docker compose` с Caddy.
+
+1. Убедись, что DNS `A` запись домена указывает на IP сервера.
+2. Убедись, что на сервере открыты входящие порты `80` и `443`.
+3. Собери образ приложения:
+
+```bash
+docker build -t invoice_generator:local .
+```
+
+4. Создай `.env` в корне проекта:
+
+```bash
+echo "DOMAIN=your-domain.com" > .env
+```
+
+5. Запусти сервисы:
+
+```bash
+mkdir -p uploads
+docker compose up -d
+```
+
+6. Проверь:
+- `https://your-domain.com/bread`
+- `https://your-domain.com/kond`
+
+Если хост использует SELinux (например Fedora/CentOS/RHEL), замени volume в `docker-compose.yml` на:
+
+```yaml
+    volumes:
+      - ./uploads:/app/uploads:Z
+```
+
 ## Полезно знать
 
 - Приложение использует папку `uploads/` для временных файлов.

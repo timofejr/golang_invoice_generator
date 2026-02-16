@@ -1,0 +1,9 @@
+.git
+.gitignore
+.gocache
+.zed
+uploads
+__debug_bin*
+*.log
+tmp
+tmp/*
