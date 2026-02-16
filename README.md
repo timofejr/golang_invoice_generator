@@ -49,6 +49,10 @@ docker build -t invoice_generator:local .
 docker run --rm -p 8080:8080 -v $(pwd)/uploads:/app/uploads invoice_generator:local
 ```
 
+```bash
+docker run -d --name invoice_generator -p 8080:8080 -v $(pwd)/uploads:/app/uploads invoice_generator:local
+```
+
 ## Полезно знать
 
 - Приложение использует папку `uploads/` для временных файлов.
