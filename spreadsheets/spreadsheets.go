@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -98,54 +99,96 @@ func GetInvoiceNew(invoiceId string, contragent string, daytime *string, workshe
 	shift := getShift(applicationType)
 	rowStart := 2 + shift
 	invoice := make([][]string, 0)
+	worksheetInvoices := make([][][]string, len(worksheets))
 
-	for _, worksheet := range worksheets {
-		sheetName := withDaytimeSuffix(worksheet, daytime)
+	var wg sync.WaitGroup
+	wg.Add(len(worksheets))
 
-		cols, err := file.GetCols(sheetName)
-		if err != nil {
-			return nil, err
-		}
+	var once sync.Once
+	var firstErr error
 
-		if len(cols) < 3 {
-			continue
-		}
+	for worksheetIndex, worksheet := range worksheets {
+		worksheetIndex := worksheetIndex
+		worksheet := worksheet
+		go func() {
+			defer wg.Done()
 
-		contragentCol := -1
-		for colIndex := 2; colIndex < len(cols); colIndex++ {
-			col := cols[colIndex]
-			if shift < len(col) && col[shift] == contragent {
-				contragentCol = colIndex
-				break
-			}
-		}
+			sheetName := withDaytimeSuffix(worksheet, daytime)
 
-		if contragentCol == -1 {
-			return nil, errors.New("контрагент не найден")
-		}
-
-		productsCol := cols[0]
-		articlesCol := cols[1]
-		amountsCol := cols[contragentCol]
-
-		rowsLimit := min(len(productsCol), len(articlesCol), len(amountsCol))
-		for rowIndex := rowStart; rowIndex < rowsLimit; rowIndex++ {
-			product := productsCol[rowIndex]
-			if product == "Ноль когда закончили" {
-				break
+			rows, err := file.GetRows(sheetName)
+			if err != nil {
+				once.Do(func() {
+					firstErr = err
+				})
+				return
 			}
 
-			article := articlesCol[rowIndex]
-			amount := amountsCol[rowIndex]
-			if len(product) == 0 || len(article) == 0 || len(amount) == 0 {
-				continue
+			if len(rows) == 0 {
+				return
 			}
 
-			invoice = append(invoice, []string{product, article, amount})
-		}
+			contragentCol := -1
+			header := []string{}
+			if shift >= 0 && shift < len(rows) {
+				header = rows[shift]
+			}
+			for colIndex := 2; colIndex < len(header); colIndex++ {
+				if header[colIndex] == contragent {
+					contragentCol = colIndex
+					break
+				}
+			}
+
+			if contragentCol == -1 {
+				once.Do(func() {
+					firstErr = errors.New("контрагент не найден")
+				})
+				return
+			}
+
+			worksheetInvoice := make([][]string, 0)
+			for rowIndex := rowStart; rowIndex < len(rows); rowIndex++ {
+				product := getCellValue(rows, rowIndex, 0)
+				if product == "Ноль когда закончили" {
+					break
+				}
+
+				article := getCellValue(rows, rowIndex, 1)
+				amount := getCellValue(rows, rowIndex, contragentCol)
+				if len(product) == 0 || len(article) == 0 || len(amount) == 0 {
+					continue
+				}
+
+				worksheetInvoice = append(worksheetInvoice, []string{product, article, amount})
+			}
+
+			worksheetInvoices[worksheetIndex] = worksheetInvoice
+		}()
+	}
+
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	for _, worksheetInvoice := range worksheetInvoices {
+		invoice = append(invoice, worksheetInvoice...)
 	}
 
 	return invoice, nil
+}
+
+func getCellValue(rows [][]string, rowIndex int, colIndex int) string {
+	if rowIndex < 0 || rowIndex >= len(rows) {
+		return ""
+	}
+
+	row := rows[rowIndex]
+	if colIndex < 0 || colIndex >= len(row) {
+		return ""
+	}
+
+	return row[colIndex]
 }
 
 func getShift(applicationType string) int {
@@ -176,10 +219,10 @@ func withDaytimeSuffix(worksheet string, daytime *string) string {
 
 func DeleteFile(fileID string) error {
 	err := os.Remove(UploadsDir + fileID + ".xlsx")
-	
+
 	if err != nil {
 		return errors.New("ошибка удаления файла")
 	}
-	
+
 	return nil
 }
