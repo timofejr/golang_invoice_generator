@@ -193,12 +193,54 @@ func CreateInvoice(c *gin.Context) {
 		return
 	}
 
-	var title strings.Builder
-	title.WriteString(req.ContrAgent + ": ")
+	c.JSON(200, dto.CreateInvoiceResponse{
+		Invoice: invoice,
+		Title:   buildInvoiceTitle(req.ContrAgent, req.Worksheets, req.Daytime),
+	})
+}
 
-	for i, worksheet := range req.Worksheets {
-		if req.Daytime != nil && *req.Daytime != "" {
-			switch *req.Daytime {
+func CreateInvoiceAllContragents(c *gin.Context) {
+	var req dto.CreateInvoiceAllContragentsRequest
+	if err := c.ShouldBind(&req); err != nil {
+		logRequestError(c, "invoice_all.bind_request", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ApplicationType != "store" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "общая накладная доступна только для заявок Магаз."})
+		return
+	}
+
+	invoice, err := spreadsheets.GetInvoiceAllContragents(req.InvoiceID, req.Daytime, req.Worksheets, req.ApplicationType)
+	if err != nil {
+		log.Printf(
+			"error operation=invoice_all.create method=%s path=%s ip=%s invoice_id=%s application_type=%s worksheets=%d err=%v",
+			c.Request.Method,
+			c.FullPath(),
+			c.ClientIP(),
+			req.InvoiceID,
+			req.ApplicationType,
+			len(req.Worksheets),
+			err,
+		)
+		c.JSON(500, gin.H{"error": "не удалось создать общую накладную"})
+		return
+	}
+
+	c.JSON(200, dto.CreateInvoiceResponse{
+		Invoice: invoice,
+		Title:   buildInvoiceTitle("Все контрагенты", req.Worksheets, req.Daytime),
+	})
+}
+
+func buildInvoiceTitle(contragent string, worksheets []string, daytime *string) string {
+	var title strings.Builder
+	title.WriteString(contragent + ": ")
+
+	for i, worksheet := range worksheets {
+		if daytime != nil && *daytime != "" {
+			switch *daytime {
 			case "Утро":
 				title.WriteString(worksheet + " У")
 			case "День":
@@ -212,17 +254,14 @@ func CreateInvoice(c *gin.Context) {
 			title.WriteString(worksheet)
 		}
 
-		if i == len(req.Worksheets)-1 {
+		if i == len(worksheets)-1 {
 			title.WriteString(".")
 		} else {
 			title.WriteString(", ")
 		}
 	}
 
-	c.JSON(200, dto.CreateInvoiceResponse{
-		Invoice: invoice,
-		Title:   title.String(),
-	})
+	return title.String()
 }
 
 func DeleteFile(c *gin.Context) {

@@ -30,6 +30,7 @@ let isCreatingInvoice = false;
 let isDeletingFile = false;
 let lastCleanupInvoiceID = "";
 const SELECT_ALL_WORKSHEETS_VALUE = "__all_worksheets__";
+const SELECT_ALL_CONTRAGENTS_VALUE = "__all_contragents__";
 
 function showError(fieldElement, message) {
   const warning = fieldElement.querySelector(".field-warning");
@@ -411,6 +412,13 @@ fileInput.addEventListener("change", async function (event) {
       ? result.worksheets
       : [];
 
+    if (result.application_type === "store") {
+      const allOption = document.createElement("option");
+      allOption.value = SELECT_ALL_CONTRAGENTS_VALUE;
+      allOption.textContent = "Все контрагенты";
+      contragentSelect.appendChild(allOption);
+    }
+
     for (const item of contrAgents) {
       const option = document.createElement("option");
       option.value = item;
@@ -491,12 +499,18 @@ mainForm.addEventListener("submit", async function (event) {
     worksheets: worksheets,
     application_type: applicationType,
   };
+  let createInvoiceEndpoint = "/kond/create_invoice";
+
+  if (contragent === SELECT_ALL_CONTRAGENTS_VALUE) {
+    createInvoiceEndpoint = "/kond/create_invoice_all_contragents";
+    delete request.contr_agent;
+  }
 
   isCreatingInvoice = true;
   setLoadingState(true, "Создаем накладную...");
 
   try {
-    const response = await fetch("/kond/create_invoice", {
+    const response = await fetch(createInvoiceEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
