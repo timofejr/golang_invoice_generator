@@ -2,6 +2,7 @@ package spreadsheets
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -12,6 +13,8 @@ import (
 )
 
 const UploadsDir = "./uploads/"
+
+var ErrWorksheetNotFound = errors.New("лист не найден")
 
 func GetContragents(fileId string, applicationType string) ([]string, error) {
 	file, err := excelize.OpenFile(UploadsDir + fileId + ".xlsx")
@@ -26,34 +29,20 @@ func GetContragents(fileId string, applicationType string) ([]string, error) {
 		}
 	}()
 
-	var sheetName string
-	var rowNumber int
-
 	if applicationType == "store" {
-		sheetName = "Хлеб У"
-		rowNumber = 0
-	} else {
-		sheetName = "Хлеб"
-		rowNumber = 1
-	}
+		contragents, err := getContragentsFromSheet(file, "Хлеб У", 0)
+		if err == nil {
+			return contragents, nil
+		}
 
-	rows, err := file.GetRows(sheetName)
-	if err != nil {
-		log.Print(err)
+		if errors.Is(err, ErrWorksheetNotFound) {
+			return getContragentsFromSheet(file, "Хлеб 1600", 0)
+		}
+
 		return nil, err
 	}
 
-	contragents := make([]string, 0)
-
-	for _, cell := range rows[rowNumber][2 : len(rows[1])-4] {
-		contragents = append(contragents, cell)
-
-		if cell == "Доставка" {
-			break
-		}
-	}
-
-	return contragents, nil
+	return getContragentsFromSheet(file, "Хлеб", 1)
 }
 
 func GetWorksheets(manufactureType string) ([]string, error) {
@@ -72,7 +61,7 @@ func GetWorksheets(manufactureType string) ([]string, error) {
 
 func GetDaytimes(application_type string) ([]string, error) {
 	var daytimes = map[string][]string{
-		"store":     {"Утро", "День", "Дозавоз"},
+		"store":     {"Утро", "День", "Дозавоз", "12:00", "14:00", "16:00", "18:00"},
 		"wholesale": {},
 	}
 
@@ -120,7 +109,7 @@ func GetInvoiceNew(invoiceId string, contragent string, daytime *string, workshe
 			rows, err := file.GetRows(sheetName)
 			if err != nil {
 				once.Do(func() {
-					firstErr = err
+					firstErr = mapWorksheetError(err, sheetName)
 				})
 				return
 			}
@@ -214,7 +203,7 @@ func GetInvoiceAllContragents(invoiceId string, daytime *string, worksheets []st
 			rows, err := file.GetRows(sheetName)
 			if err != nil {
 				once.Do(func() {
-					firstErr = err
+					firstErr = mapWorksheetError(err, sheetName)
 				})
 				return
 			}
@@ -364,9 +353,64 @@ func withDaytimeSuffix(worksheet string, daytime *string) string {
 		return worksheet + " Д"
 	case "Дозавоз":
 		return worksheet + " Доз."
+	case "12:00":
+		return worksheet + " 1200"
+	case "14:00":
+		return worksheet + " 1400"
+	case "16:00":
+		return worksheet + " 1600"
+	case "18:00":
+		return worksheet + " 1800"
 	default:
-		return worksheet
+		return worksheet + " " + *daytime
 	}
+}
+
+func getContragentsFromSheet(file *excelize.File, sheetName string, rowNumber int) ([]string, error) {
+	rows, err := file.GetRows(sheetName)
+	if err != nil {
+		return nil, mapWorksheetError(err, sheetName)
+	}
+
+	if rowNumber < 0 || rowNumber >= len(rows) {
+		return nil, errors.New("некорректная структура файла: отсутствует строка с контрагентами")
+	}
+
+	header := rows[rowNumber]
+	if len(header) <= 2 {
+		return nil, errors.New("некорректная структура файла: нет контрагентов")
+	}
+
+	contragents := make([]string, 0, len(header)-2)
+	for colIndex := 2; colIndex < len(header); colIndex++ {
+		cell := strings.TrimSpace(header[colIndex])
+		if cell == "" {
+			continue
+		}
+
+		contragents = append(contragents, cell)
+		if cell == "Доставка" {
+			break
+		}
+	}
+
+	if len(contragents) == 0 {
+		return nil, errors.New("контрагенты не найдены")
+	}
+
+	return contragents, nil
+}
+
+func mapWorksheetError(err error, sheetName string) error {
+	if err == nil {
+		return nil
+	}
+
+	if strings.Contains(strings.ToLower(err.Error()), "does not exist") {
+		return fmt.Errorf("%w: %s", ErrWorksheetNotFound, sheetName)
+	}
+
+	return err
 }
 
 func DeleteFile(fileID string) error {

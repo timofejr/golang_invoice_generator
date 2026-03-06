@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"io"
 	"log"
 	"mime/multipart"
@@ -189,7 +190,12 @@ func CreateInvoice(c *gin.Context) {
 			len(req.Worksheets),
 			err,
 		)
-		c.JSON(500, gin.H{"error": "не удалось создать накладную"})
+		if errors.Is(err, spreadsheets.ErrWorksheetNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "выбранный лист отсутствует в файле, выберите другой лист"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось создать накладную"})
 		return
 	}
 
@@ -224,7 +230,12 @@ func CreateInvoiceAllContragents(c *gin.Context) {
 			len(req.Worksheets),
 			err,
 		)
-		c.JSON(500, gin.H{"error": "не удалось создать общую накладную"})
+		if errors.Is(err, spreadsheets.ErrWorksheetNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "выбранный лист отсутствует в файле, выберите другой лист"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось создать общую накладную"})
 		return
 	}
 
@@ -248,7 +259,7 @@ func buildInvoiceTitle(contragent string, worksheets []string, daytime *string) 
 			case "Дозавоз":
 				title.WriteString(worksheet + " Доз.")
 			default:
-				title.WriteString(worksheet)
+				title.WriteString(worksheet + " " + *daytime)
 			}
 		} else {
 			title.WriteString(worksheet)
