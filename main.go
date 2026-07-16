@@ -24,6 +24,8 @@ func main() {
 	router.GET("/bread", handlers.BreadPage)
 	router.POST("/bread/upload_file", handlers.UploadApplicationFile)
 	router.POST("/bread/create_invoice", handlers.CreateInvoice)
+	router.POST("/bread/create_invoice_all_contragents", handlers.CreateInvoiceAllContragents)
+
 
 	router.POST("/delete_file", handlers.DeleteFile)
 
