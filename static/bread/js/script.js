@@ -31,6 +31,8 @@ let isDeletingFile = false;
 let lastCleanupInvoiceID = "";
 const SELECT_ALL_WORKSHEETS_VALUE = "__all_worksheets__";
 const SELECT_ALL_CONTRAGENTS_VALUE = "__all_contragents__";
+const SELECT_ALL_STORES_VALUE = "__all_stores__";
+const SELECT_ALL_STORES_DELIVERY_VALUE = "__all_stores_delivery__";
 
 function showError(fieldElement, message) {
   const warning = fieldElement.querySelector(".field-warning");
@@ -413,6 +415,16 @@ fileInput.addEventListener("change", async function (event) {
       : [];
 
     if (result.application_type === "store") {
+      const allStoresOption = document.createElement("option");
+      allStoresOption.value = SELECT_ALL_STORES_VALUE;
+      allStoresOption.textContent = "Все магазины";
+      contragentSelect.appendChild(allStoresOption);
+
+      const allStoresDeliveryOption = document.createElement("option");
+      allStoresDeliveryOption.value = SELECT_ALL_STORES_DELIVERY_VALUE;
+      allStoresDeliveryOption.textContent = "Все магазины + доставка";
+      contragentSelect.appendChild(allStoresDeliveryOption);
+
       const allOption = document.createElement("option");
       allOption.value = SELECT_ALL_CONTRAGENTS_VALUE;
       allOption.textContent = "Все контрагенты";
@@ -504,6 +516,12 @@ mainForm.addEventListener("submit", async function (event) {
 
   if (contragent === SELECT_ALL_CONTRAGENTS_VALUE) {
     createInvoiceEndpoint = "/bread/create_invoice_all_contragents";
+    delete request.contr_agent;
+  } else if (contragent === SELECT_ALL_STORES_VALUE) {
+    createInvoiceEndpoint = "/bread/create_invoice_all_stores";
+    delete request.contr_agent;
+  } else if (contragent === SELECT_ALL_STORES_DELIVERY_VALUE) {
+    createInvoiceEndpoint = "/bread/create_invoice_all_stores_delivery";
     delete request.contr_agent;
   }
 

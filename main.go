@@ -19,13 +19,15 @@ func main() {
 	router.GET("/kond", handlers.KondPage)
 	router.POST("/kond/upload_file", handlers.UploadApplicationFile)
 	router.POST("/kond/create_invoice", handlers.CreateInvoice)
-	router.POST("/kond/create_invoice_all_contragents", handlers.CreateInvoiceAllContragents)
+	router.POST("/kond/create_invoice_all_stores", handlers.CreateKondAllStores)
+	router.POST("/kond/create_invoice_all_stores_delivery", handlers.CreateKondAllStoresDelivery)
 
 	router.GET("/bread", handlers.BreadPage)
 	router.POST("/bread/upload_file", handlers.UploadApplicationFile)
 	router.POST("/bread/create_invoice", handlers.CreateInvoice)
-	router.POST("/bread/create_invoice_all_contragents", handlers.CreateInvoiceAllContragents)
-
+	router.POST("/bread/create_invoice_all_contragents", handlers.CreateBreadAllContragents)
+	router.POST("/bread/create_invoice_all_stores", handlers.CreateBreadAllStores)
+	router.POST("/bread/create_invoice_all_stores_delivery", handlers.CreateBreadAllStoresDelivery)
 
 	router.POST("/delete_file", handlers.DeleteFile)
 

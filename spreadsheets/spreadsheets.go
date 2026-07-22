@@ -16,6 +16,14 @@ const UploadsDir = "./uploads/"
 
 var ErrWorksheetNotFound = errors.New("лист не найден")
 
+type ContragentsSumMode int
+
+const (
+	SumModeStores ContragentsSumMode = iota
+	SumModeStoresAndDelivery
+	SumModeAll
+)
+
 func GetContragents(fileId string, applicationType string) ([]string, error) {
 	file, err := excelize.OpenFile(UploadsDir + fileId + ".xlsx")
 	if err != nil {
@@ -169,7 +177,7 @@ func GetInvoiceNew(invoiceId string, contragent string, daytime *string, workshe
 	return invoice, nil
 }
 
-func GetInvoiceAllContragents(invoiceId string, daytime *string, worksheets []string, applicationType string) ([][]string, error) {
+func GetInvoiceAllContragentsByMode(invoiceId string, daytime *string, worksheets []string, applicationType string, mode ContragentsSumMode) ([][]string, error) {
 	file, err := excelize.OpenFile(UploadsDir + invoiceId + ".xlsx")
 	if err != nil {
 		log.Print(err)
@@ -217,12 +225,22 @@ func GetInvoiceAllContragents(invoiceId string, daytime *string, worksheets []st
 				header = rows[shift]
 			}
 
-			contragentCols := getAllContragentColumns(header)
-			if len(contragentCols) == 0 {
+			storeCols, deliveryCol, optCols := splitContragentColumns(header)
+			if len(storeCols) == 0 {
 				once.Do(func() {
 					firstErr = errors.New("контрагенты не найдены")
 				})
 				return
+			}
+
+			sumCols := append([]int{}, storeCols...)
+			if mode == SumModeStoresAndDelivery || mode == SumModeAll {
+				if deliveryCol != -1 {
+					sumCols = append(sumCols, deliveryCol)
+				}
+			}
+			if mode == SumModeAll {
+				sumCols = append(sumCols, optCols...)
 			}
 
 			worksheetInvoice := make([][]string, 0)
@@ -239,7 +257,7 @@ func GetInvoiceAllContragents(invoiceId string, daytime *string, worksheets []st
 
 				sum := 0.0
 				hasAmount := false
-				for _, colIndex := range contragentCols {
+				for _, colIndex := range sumCols {
 					amountRaw := getCellValue(rows, rowIndex, colIndex)
 					parsedAmount, ok, err := parseAmount(amountRaw)
 					if err != nil {
@@ -279,6 +297,30 @@ func GetInvoiceAllContragents(invoiceId string, daytime *string, worksheets []st
 	return invoice, nil
 }
 
+func splitContragentColumns(header []string) (storeCols []int, deliveryCol int, optCols []int) {
+	deliveryCol = -1
+
+	for colIndex := 2; colIndex < len(header); colIndex++ {
+		cell := strings.TrimSpace(header[colIndex])
+		if cell == "" {
+			continue
+		}
+
+		if cell == "Доставка" {
+			deliveryCol = colIndex
+			continue
+		}
+
+		if deliveryCol == -1 {
+			storeCols = append(storeCols, colIndex)
+		} else {
+			optCols = append(optCols, colIndex)
+		}
+	}
+
+	return storeCols, deliveryCol, optCols
+}
+
 func getCellValue(rows [][]string, rowIndex int, colIndex int) string {
 	if rowIndex < 0 || rowIndex >= len(rows) {
 		return ""
@@ -290,24 +332,6 @@ func getCellValue(rows [][]string, rowIndex int, colIndex int) string {
 	}
 
 	return row[colIndex]
-}
-
-func getAllContragentColumns(header []string) []int {
-	columns := make([]int, 0)
-
-	for colIndex := 2; colIndex < len(header); colIndex++ {
-		cell := strings.TrimSpace(header[colIndex])
-		if cell == "" {
-			continue
-		}
-
-		columns = append(columns, colIndex)
-		if cell == "Доставка" {
-			break
-		}
-	}
-
-	return columns
 }
 
 func parseAmount(raw string) (float64, bool, error) {

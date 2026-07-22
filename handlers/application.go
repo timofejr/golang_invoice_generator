@@ -17,6 +17,13 @@ import (
 	"github.com/google/uuid"
 )
 
+const morningDaytime = "Утро"
+const morningOnlyErrorMessage = "Для времени 'День'/'Дозавоз' доступен только вариант 'Все магазины'"
+
+func isMorningDaytime(daytime *string) bool {
+	return daytime != nil && *daytime == morningDaytime
+}
+
 func logRequestError(c *gin.Context, operation string, err error) {
 	log.Printf(
 		"error operation=%s method=%s path=%s ip=%s err=%v",
@@ -205,10 +212,10 @@ func CreateInvoice(c *gin.Context) {
 	})
 }
 
-func CreateInvoiceAllContragents(c *gin.Context) {
+func createAllContragentsInvoice(c *gin.Context, operation string, mode spreadsheets.ContragentsSumMode, title string, requireMorning bool) {
 	var req dto.CreateInvoiceAllContragentsRequest
 	if err := c.ShouldBind(&req); err != nil {
-		logRequestError(c, "invoice_all.bind_request", err)
+		logRequestError(c, operation+".bind_request", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -218,10 +225,16 @@ func CreateInvoiceAllContragents(c *gin.Context) {
 		return
 	}
 
-	invoice, err := spreadsheets.GetInvoiceAllContragents(req.InvoiceID, req.Daytime, req.Worksheets, req.ApplicationType)
+	if requireMorning && !isMorningDaytime(req.Daytime) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": morningOnlyErrorMessage})
+		return
+	}
+
+	invoice, err := spreadsheets.GetInvoiceAllContragentsByMode(req.InvoiceID, req.Daytime, req.Worksheets, req.ApplicationType, mode)
 	if err != nil {
 		log.Printf(
-			"error operation=invoice_all.create method=%s path=%s ip=%s invoice_id=%s application_type=%s worksheets=%d err=%v",
+			"error operation=%s.create method=%s path=%s ip=%s invoice_id=%s application_type=%s worksheets=%d err=%v",
+			operation,
 			c.Request.Method,
 			c.FullPath(),
 			c.ClientIP(),
@@ -241,8 +254,28 @@ func CreateInvoiceAllContragents(c *gin.Context) {
 
 	c.JSON(200, dto.CreateInvoiceResponse{
 		Invoice: invoice,
-		Title:   buildInvoiceTitle("Все контрагенты", req.Worksheets, req.Daytime),
+		Title:   buildInvoiceTitle(title, req.Worksheets, req.Daytime),
 	})
+}
+
+func CreateBreadAllStores(c *gin.Context) {
+	createAllContragentsInvoice(c, "invoice_all_bread_stores", spreadsheets.SumModeStores, "Все магазины", false)
+}
+
+func CreateBreadAllContragents(c *gin.Context) {
+	createAllContragentsInvoice(c, "invoice_all_bread_contragents", spreadsheets.SumModeAll, "Все контрагенты", true)
+}
+
+func CreateBreadAllStoresDelivery(c *gin.Context) {
+	createAllContragentsInvoice(c, "invoice_all_bread_stores_delivery", spreadsheets.SumModeStoresAndDelivery, "Все магазины + доставка", true)
+}
+
+func CreateKondAllStores(c *gin.Context) {
+	createAllContragentsInvoice(c, "invoice_all_kond_stores", spreadsheets.SumModeStores, "Все магазины", false)
+}
+
+func CreateKondAllStoresDelivery(c *gin.Context) {
+	createAllContragentsInvoice(c, "invoice_all_kond_stores_delivery", spreadsheets.SumModeStoresAndDelivery, "Все магазины + доставка", true)
 }
 
 func buildInvoiceTitle(contragent string, worksheets []string, daytime *string) string {
