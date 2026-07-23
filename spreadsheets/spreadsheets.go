@@ -24,7 +24,13 @@ const (
 	SumModeAll
 )
 
-func GetContragents(fileId string, applicationType string) ([]string, error) {
+// Восточка — отдельный лист-контрагент, встречается только в опте кондитерки.
+// В отличие от остальных контрагентов, он определяется по имени листа, а не по
+// заголовку колонки, и на листе всегда ровно одна колонка с количеством.
+const VostochkaContragent = "Восточка"
+const vostochkaAmountColumn = 2
+
+func GetContragents(fileId string, applicationType string, manufactureType string) ([]string, error) {
 	file, err := excelize.OpenFile(UploadsDir + fileId + ".xlsx")
 	if err != nil {
 		log.Print(err)
@@ -37,20 +43,42 @@ func GetContragents(fileId string, applicationType string) ([]string, error) {
 		}
 	}()
 
+	var contragents []string
+
 	if applicationType == "store" {
-		contragents, err := getContragentsFromSheet(file, "Хлеб У", 0)
-		if err == nil {
-			return contragents, nil
-		}
+		contragents, err = getContragentsFromSheet(file, "Хлеб У", 0)
+		if err != nil {
+			if !errors.Is(err, ErrWorksheetNotFound) {
+				return nil, err
+			}
 
-		if errors.Is(err, ErrWorksheetNotFound) {
-			return getContragentsFromSheet(file, "Хлеб 1600", 0)
+			contragents, err = getContragentsFromSheet(file, "Хлеб 1600", 0)
+			if err != nil {
+				return nil, err
+			}
 		}
-
-		return nil, err
+	} else {
+		contragents, err = getContragentsFromSheet(file, "Хлеб", 1)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return getContragentsFromSheet(file, "Хлеб", 1)
+	if applicationType == "wholesale" && manufactureType == "kond" && hasSheet(file, VostochkaContragent) {
+		contragents = append(contragents, VostochkaContragent)
+	}
+
+	return contragents, nil
+}
+
+func hasSheet(file *excelize.File, name string) bool {
+	for _, sheet := range file.GetSheetList() {
+		if sheet == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func GetWorksheets(manufactureType string) ([]string, error) {
@@ -131,10 +159,15 @@ func GetInvoiceNew(invoiceId string, contragent string, daytime *string, workshe
 			if shift >= 0 && shift < len(rows) {
 				header = rows[shift]
 			}
-			for colIndex := 2; colIndex < len(header); colIndex++ {
-				if header[colIndex] == contragent {
-					contragentCol = colIndex
-					break
+
+			if sheetName == VostochkaContragent {
+				contragentCol = vostochkaAmountColumn
+			} else {
+				for colIndex := 2; colIndex < len(header); colIndex++ {
+					if header[colIndex] == contragent {
+						contragentCol = colIndex
+						break
+					}
 				}
 			}
 
@@ -405,10 +438,19 @@ func getContragentsFromSheet(file *excelize.File, sheetName string, rowNumber in
 		return nil, errors.New("некорректная структура файла: нет контрагентов")
 	}
 
+	// Строка данных сразу под строкой с датами (rowNumber+1), которая идёт под заголовком.
+	firstDataRow := rowNumber + 2
+
 	contragents := make([]string, 0, len(header)-2)
 	for colIndex := 2; colIndex < len(header); colIndex++ {
 		cell := strings.TrimSpace(header[colIndex])
 		if cell == "" {
+			continue
+		}
+
+		// Итоговые колонки (например "Опт Г"/"ОПТ Д") считаются формулой SUM
+		// по остальным контрагентам, а не вводятся вручную — это не контрагент.
+		if isComputedColumn(file, sheetName, colIndex, firstDataRow) {
 			continue
 		}
 
@@ -423,6 +465,20 @@ func getContragentsFromSheet(file *excelize.File, sheetName string, rowNumber in
 	}
 
 	return contragents, nil
+}
+
+func isComputedColumn(file *excelize.File, sheetName string, colIndex int, dataRow int) bool {
+	cellRef, err := excelize.CoordinatesToCellName(colIndex+1, dataRow+1)
+	if err != nil {
+		return false
+	}
+
+	formula, err := file.GetCellFormula(sheetName, cellRef)
+	if err != nil {
+		return false
+	}
+
+	return formula != ""
 }
 
 func mapWorksheetError(err error, sheetName string) error {

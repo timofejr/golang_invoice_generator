@@ -32,6 +32,24 @@ let lastCleanupInvoiceID = "";
 const SELECT_ALL_WORKSHEETS_VALUE = "__all_worksheets__";
 const SELECT_ALL_STORES_VALUE = "__all_stores__";
 const SELECT_ALL_STORES_DELIVERY_VALUE = "__all_stores_delivery__";
+const VOSTOCHKA_CONTRAGENT = "Восточка";
+
+function isVostochkaSelected() {
+  return contragentSelect.value === VOSTOCHKA_CONTRAGENT;
+}
+
+function syncWorksheetsForContragent() {
+  if (isVostochkaSelected()) {
+    for (const checkbox of worksheetList.querySelectorAll(
+      'input[type="checkbox"]',
+    )) {
+      checkbox.checked = false;
+    }
+    setWorksheetsDisabled(true);
+  } else {
+    setWorksheetsDisabled(false);
+  }
+}
 
 function showError(fieldElement, message) {
   const warning = fieldElement.querySelector(".field-warning");
@@ -470,7 +488,10 @@ mainForm.addEventListener("submit", async function (event) {
 
   const contragent = contragentSelect.value;
   const daytime = daytimeSelect.value;
-  const worksheets = getSelectedWorksheets();
+  const isVostochka = contragent === VOSTOCHKA_CONTRAGENT;
+  const worksheets = isVostochka
+    ? [VOSTOCHKA_CONTRAGENT]
+    : getSelectedWorksheets();
 
   if (contragent === "") {
     showError(contragentField, "Выберите контрагента");
@@ -482,7 +503,7 @@ mainForm.addEventListener("submit", async function (event) {
     flag = true;
   }
 
-  if (worksheets.length === 0) {
+  if (!isVostochka && worksheets.length === 0) {
     showError(worksheetField, "Выберите хотя бы один лист");
     flag = true;
   }
@@ -595,6 +616,8 @@ if (copyTableButton) {
 
 contragentSelect.addEventListener("change", () => {
   clearFieldState(contragentField);
+  syncWorksheetsForContragent();
+  clearFieldState(worksheetField);
 });
 
 daytimeSelect.addEventListener("change", () => {

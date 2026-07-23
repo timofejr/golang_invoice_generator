@@ -123,7 +123,7 @@ func UploadApplicationFile(c *gin.Context) {
 		return
 	}
 
-	contragents, err := spreadsheets.GetContragents(fileId, applicationType)
+	contragents, err := spreadsheets.GetContragents(fileId, applicationType, req.ManufactureType)
 	if err != nil {
 		log.Printf(
 			"error operation=upload.get_contragents method=%s path=%s ip=%s file_id=%s application_type=%s err=%v",
