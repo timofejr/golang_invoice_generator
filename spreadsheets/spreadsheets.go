@@ -24,9 +24,6 @@ const (
 	SumModeAll
 )
 
-// Восточка — отдельный лист-контрагент, встречается только в опте кондитерки.
-// В отличие от остальных контрагентов, он определяется по имени листа, а не по
-// заголовку колонки, и на листе всегда ровно одна колонка с количеством.
 const VostochkaContragent = "Восточка"
 const vostochkaAmountColumn = 2
 
@@ -438,7 +435,6 @@ func getContragentsFromSheet(file *excelize.File, sheetName string, rowNumber in
 		return nil, errors.New("некорректная структура файла: нет контрагентов")
 	}
 
-	// Строка данных сразу под строкой с датами (rowNumber+1), которая идёт под заголовком.
 	firstDataRow := rowNumber + 2
 
 	contragents := make([]string, 0, len(header)-2)
@@ -448,8 +444,6 @@ func getContragentsFromSheet(file *excelize.File, sheetName string, rowNumber in
 			continue
 		}
 
-		// Итоговые колонки (например "Опт Г"/"ОПТ Д") считаются формулой SUM
-		// по остальным контрагентам, а не вводятся вручную — это не контрагент.
 		if isComputedColumn(file, sheetName, colIndex, firstDataRow) {
 			continue
 		}
@@ -478,7 +472,7 @@ func isComputedColumn(file *excelize.File, sheetName string, colIndex int, dataR
 		return false
 	}
 
-	return formula != ""
+	return strings.Contains(strings.ToUpper(formula), "SUM(")
 }
 
 func mapWorksheetError(err error, sheetName string) error {
